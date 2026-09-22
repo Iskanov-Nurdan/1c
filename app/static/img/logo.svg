@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 120 120" width="120" height="120" role="img" aria-label="Ledger">
+  <defs>
+    <linearGradient id="cobalt" x1="0" y1="0" x2="1" y2="1">
+      <stop offset="0%"   stop-color="#4A76C8"/>
+      <stop offset="60%"  stop-color="#2F5FD0"/>
+      <stop offset="100%" stop-color="#183472"/>
+    </linearGradient>
+  </defs>
+  <rect width="120" height="120" rx="26" fill="url(#cobalt)"/>
+
+  <!-- Монограмма L прямоугольниками: не зависит от установленных шрифтов -->
+  <g fill="#F5F7FA">
+    <rect x="38" y="30" width="12" height="58"/>
+    <rect x="38" y="76" width="44" height="12"/>
+  </g>
+
+  <!-- Разлиновка учётной книги -->
+  <g fill="#F5F7FA" opacity=".42">
+    <rect x="60" y="30" width="22" height="4" rx="2"/>
+    <rect x="60" y="44" width="22" height="4" rx="2"/>
+    <rect x="60" y="58" width="14" height="4" rx="2"/>
+  </g>
+</svg>

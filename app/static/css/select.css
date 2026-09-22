@@ -1,0 +1,252 @@
+/* =============================================================================
+   СЕЛЕКТ: стили кастомного выпадающего списка (см. js/core/select.js)
+
+   Триггер намеренно наследует класс .select, поэтому геометрию, рамку,
+   фокус и состояния он получает из components.css. Здесь только то, чего
+   нативный элемент дать не может: сам список, группы, отметка выбора.
+   ========================================================================== */
+
+.xselect {
+  position: relative;
+  display: block;
+  width: 100%;
+}
+/* Табличные фильтры и переключатели в шапке идут в строку — там ширина по
+   содержимому, как была у нативного селекта. */
+.table-toolbar .xselect,
+.topbar__actions .xselect { width: auto; }
+
+/* Нативный селект остаётся в форме: значение, сериализация и валидация
+   работают как раньше. Он невидим, но не hidden — скрытый required-элемент
+   ломает нативную валидацию. */
+.xselect__native {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  opacity: 0;
+  pointer-events: none;
+  appearance: none;
+}
+
+.xselect__trigger {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  text-align: left;
+  /* стрелка теперь отдельным элементом — она умеет поворачиваться */
+  background-image: none;
+  padding-right: 28px;
+}
+.xselect__label {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+/* Незаполненное поле читается как подсказка, а не как выбранное значение */
+.xselect__trigger.is-empty .xselect__label { color: var(--text-3); }
+
+.xselect__caret {
+  position: absolute;
+  right: 8px;
+  display: flex;
+  color: var(--text-3);
+  transition: transform var(--t-fast), color var(--t-fast);
+}
+.xselect__caret svg { width: 15px; height: 15px; }
+.xselect__trigger.is-open .xselect__caret { transform: rotate(180deg); color: var(--brand-500); }
+.xselect__trigger.is-open {
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px var(--brand-100);
+}
+.xselect__trigger:disabled .xselect__caret { color: var(--line-strong); }
+
+/* Ошибка валидации подсвечивает триггер так же, как поле ввода */
+.field.is-invalid .xselect__trigger { border-color: var(--danger-fg); }
+.field.is-invalid .xselect__trigger.is-open { box-shadow: 0 0 0 3px var(--danger-bg); }
+
+/* =============================================================================
+   ВЫПАДАЮЩИЙ СПИСОК
+   Лежит в <body>, поэтому не обрезается прокруткой таблиц и модальных окон.
+   ========================================================================== */
+.xselect-pop {
+  position: fixed;
+  z-index: 300;               /* выше модалок (100) и тостов (200) */
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  padding: var(--s-1);
+  background: var(--surface);
+  border: 1px solid var(--line);
+  border-radius: var(--r-xl);
+  box-shadow: var(--sh-lg);
+  animation: xselect-in var(--t-fast);
+  transform-origin: top center;
+}
+.xselect-pop.is-up { transform-origin: bottom center; }
+
+.xselect-pop__list {
+  flex: 1 1 auto;
+  margin: 0;
+  padding: 0;
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  list-style: none;
+}
+
+.xselect-opt {
+  display: flex;
+  align-items: center;
+  gap: var(--s-2);
+  min-height: 32px;
+  padding: 6px var(--s-2) 6px var(--s-3);
+  border-radius: var(--r-sm);
+  font-size: var(--fs-md);
+  color: var(--text);
+  cursor: pointer;
+}
+.xselect-opt__text {
+  flex: 1 1 auto;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.xselect-opt__text mark {
+  padding: 0;
+  background: transparent;
+  color: var(--brand-500);
+  font-weight: 700;
+}
+/* Отметка занимает место всегда, иначе строки дёргаются при выборе */
+.xselect-opt__tick {
+  display: flex;
+  flex: none;
+  width: 15px;
+  color: var(--brand-500);
+  opacity: 0;
+}
+.xselect-opt__tick svg { width: 15px; height: 15px; }
+.xselect-opt.is-selected .xselect-opt__tick { opacity: 1; }
+.xselect-opt.is-selected { font-weight: 650; }
+.xselect-opt.is-placeholder { color: var(--text-3); }
+
+/* Наведение и клавиатура ведут одну и ту же подсветку — состояние всегда одно */
+.xselect-opt.is-active { background: var(--brand-50); color: var(--brand-700); }
+.xselect-opt.is-active .xselect-opt__text mark { color: inherit; }
+.xselect-opt[aria-disabled="true"] { color: var(--text-3); cursor: not-allowed; opacity: .6; }
+.xselect-opt[aria-disabled="true"].is-active { background: transparent; }
+
+.xselect-group {
+  padding: var(--s-3) var(--s-3) var(--s-1);
+  font-size: var(--fs-xs);
+  font-weight: 700;
+  letter-spacing: var(--track-wide);
+  text-transform: uppercase;
+  color: var(--text-3);
+}
+
+/* --- Поиск (появляется от 8 пунктов) --------------------------------------- */
+.xselect-pop__search {
+  padding: var(--s-1) var(--s-1) var(--s-2);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--s-1);
+}
+.xselect-pop__input {
+  width: 100%;
+  min-height: 30px;
+  padding: 4px var(--s-3);
+  border: 1px solid var(--line-strong);
+  border-radius: var(--r-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: var(--fs-md);
+}
+.xselect-pop__input:focus {
+  outline: none;
+  border-color: var(--brand-500);
+  box-shadow: 0 0 0 3px var(--brand-100);
+}
+.xselect-pop__input::placeholder { color: var(--text-3); opacity: 1; }
+
+.xselect-pop__empty {
+  display: none;
+  padding: var(--s-4) var(--s-3);
+  text-align: center;
+  font-size: var(--fs-sm);
+  color: var(--text-3);
+}
+.xselect-pop.is-empty .xselect-pop__empty { display: block; }
+.xselect-pop.is-empty .xselect-pop__list { display: none; }
+
+/* =============================================================================
+   МОБИЛЬНЫЙ РЕЖИМ
+   Список у нижнего края — до него дотягивается большой палец, и он не
+   перекрывается экранной клавиатурой.
+   ========================================================================== */
+.xselect-backdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 299;
+  background: rgba(14, 17, 22, .45);
+  backdrop-filter: blur(2px);
+  animation: xselect-fade var(--t-fast);
+}
+.xselect-pop--sheet {
+  left: 0;
+  right: 0;
+  bottom: 0;
+  top: auto;
+  max-width: none;
+  max-height: min(70dvh, 520px);
+  padding: var(--s-2);
+  padding-bottom: max(var(--s-2), env(safe-area-inset-bottom));
+  border-radius: var(--r-xl) var(--r-xl) 0 0;
+  border-bottom: 0;
+  animation: xselect-sheet var(--t-base);
+}
+.xselect-pop--sheet .xselect-opt { min-height: 44px; font-size: var(--fs-base); }
+
+.xselect-pop__head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--s-3);
+  padding: var(--s-2) var(--s-2) var(--s-3);
+  border-bottom: 1px solid var(--line);
+  margin-bottom: var(--s-1);
+}
+.xselect-pop__title { font-weight: 650; }
+.xselect-pop__close {
+  border: 0;
+  background: transparent;
+  color: var(--text-3);
+  font-size: var(--fs-lg);
+  line-height: 1;
+  padding: var(--s-1) var(--s-2);
+  border-radius: var(--r-sm);
+}
+.xselect-pop__close:hover { background: var(--surface-3); color: var(--text); }
+
+@keyframes xselect-in {
+  from { opacity: 0; transform: translateY(-4px) scale(.99); }
+  to   { opacity: 1; transform: none; }
+}
+@keyframes xselect-sheet {
+  from { transform: translateY(12px); opacity: .6; }
+  to   { transform: none; opacity: 1; }
+}
+@keyframes xselect-fade { from { opacity: 0; } to { opacity: 1; } }
+
+@media (prefers-reduced-motion: reduce) {
+  .xselect-pop, .xselect-backdrop { animation: none; }
+  .xselect__caret { transition: none; }
+}
+
+@media print {
+  .xselect-pop, .xselect-backdrop, .xselect__caret { display: none !important; }
+  .xselect__trigger { border: 0; padding: 0; }
+}

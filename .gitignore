@@ -1,0 +1,66 @@
+# ---- Python ----
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# ---- Виртуальные окружения ----
+.venv/
+venv/
+env/
+ENV/
+
+# ---- Секреты и локальная конфигурация ----
+# .env хранит боевые секреты — в репозиторий не кладём.
+# В git остаются только шаблоны: .env.example и .envtest.
+.env
+.env.local
+*.env
+!.env.example
+!.envtest
+
+# ---- Django ----
+# База данных разработки
+*.sqlite3
+*.sqlite3-journal
+db.sqlite3
+
+# Логи
+*.log
+logs/
+
+# Загруженные пользователями файлы (папку оставляем, содержимое — нет)
+app/media/*
+!app/media/.gitkeep
+
+# Собранная статика (результат collectstatic; исходники в app/static/ остаются)
+app/staticfiles/
+
+# Кэш локальных настроек
+local_settings.py
+
+# ---- Тесты / покрытие ----
+.coverage
+.coverage.*
+htmlcov/
+.pytest_cache/
+.tox/
+.mypy_cache/
+.ruff_cache/
+
+# ---- IDE / редакторы ----
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+
+# ---- ОС ----
+.DS_Store
+Thumbs.db
+Desktop.ini
