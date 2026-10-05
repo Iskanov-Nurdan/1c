@@ -115,6 +115,7 @@
 .field { display: flex; flex-direction: column; gap: 5px; min-width: 0; }
 
 .field__label {
+  overflow-wrap: anywhere;
   font-size: var(--fs-sm);
   font-weight: 600;
   color: var(--text-2);
@@ -172,7 +173,21 @@
 .field.is-invalid .select:focus,
 .field.is-invalid .textarea:focus { box-shadow: 0 0 0 3px var(--danger-bg); }
 
-.form-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--s-4); }
+.form-grid { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); gap: var(--s-4); align-items: start; }
+/* Чекбокс в сетке выравниваем по полям ввода соседей, а не по их подписям */
+.form-grid > .field:has(> .check) { align-self: end; min-height: 34px; justify-content: center; }
+.form-grid > .col-1  { grid-column: span 1; }
+.form-grid > .col-2  { grid-column: span 2; }
+.form-grid > .col-3  { grid-column: span 3; }
+.form-grid > .col-4  { grid-column: span 4; }
+.form-grid > .col-5  { grid-column: span 5; }
+.form-grid > .col-6  { grid-column: span 6; }
+.form-grid > .col-7  { grid-column: span 7; }
+.form-grid > .col-8  { grid-column: span 8; }
+.form-grid > .col-9  { grid-column: span 9; }
+.form-grid > .col-10 { grid-column: span 10; }
+.form-grid > .col-11 { grid-column: span 11; }
+.form-grid > .col-12 { grid-column: span 12; }
 @media (max-width: 720px) { .form-grid > * { grid-column: 1 / -1 !important; } }
 
 .form-section {

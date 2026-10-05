@@ -369,6 +369,7 @@
   function form(cfg) {
     const values = Object.assign({}, cfg.values || {});
     const nodes = {};
+    const selectOpts = {};
     const grid = el('div.form-grid');
 
     (cfg.fields || []).forEach(function (f) {
@@ -378,6 +379,7 @@
       }
       if (f.type === 'hidden') return;
 
+      const col = Math.min(12, Math.max(1, Math.round(Number(f.col)) || 12));
       const id = 'f-' + f.k + '-' + Math.round(Math.random() * 1e6);
       let input;
       const common = {
@@ -388,7 +390,14 @@
       };
 
       if (f.type === 'select') {
-        const opts = (typeof f.options === 'function' ? f.options(values) : f.options) || [];
+        const opts = ((typeof f.options === 'function' ? f.options(values) : f.options) || []).slice();
+        const cur = values[f.k];
+        // Текущее значение вне справочника не должно молча подменяться первым вариантом
+        if (cur !== undefined && cur !== null && cur !== '' &&
+            !opts.some(function (o) { return String(o.v) === String(cur); })) {
+          opts.unshift({ v: cur, t: String(cur) });
+        }
+        selectOpts[f.k] = opts;
         input = el('select.select', common, [f.empty !== false ? el('option', { value: '', text: f.placeholder || '— не выбрано —' }) : null]
           .concat(opts.map(function (o) {
             return el('option', { value: o.v, text: o.t, selected: String(values[f.k]) === String(o.v) });
@@ -400,8 +409,9 @@
         input = el('input', Object.assign({ type: 'checkbox' }, common));
         input.checked = !!values[f.k];
         const wrapCheck = el('label.check', { for: id }, [input, el('span', { text: f.t })]);
-        const fieldC = el('div.field.col-' + (f.col || 12), null, [wrapCheck, f.hint ? el('span.field__hint', { text: f.hint }) : null]);
-        nodes[f.k] = { input: input, field: fieldC, def: f };
+        const errC = el('span.field__error', { hidden: true });
+        const fieldC = el('div.field.col-' + col, null, [wrapCheck, f.hint ? el('span.field__hint', { text: f.hint }) : null, errC]);
+        nodes[f.k] = { input: input, field: fieldC, error: errC, def: f };
         grid.appendChild(fieldC);
         return;
       } else {
@@ -417,7 +427,7 @@
       }
 
       const err = el('span.field__error', { hidden: true });
-      const field = el('div.field.col-' + (f.col || 12), null, [
+      const field = el('div.field.col-' + col, null, [
         el('label.field__label', { for: id }, [f.t, f.required ? el('span.req', { text: ' *' }) : null]),
         input,
         f.hint ? el('span.field__hint', { text: f.hint }) : null,
@@ -435,7 +445,12 @@
         const n = nodes[k];
         if (n.def.type === 'checkbox') out[k] = n.input.checked;
         else if (n.def.type === 'money' || n.def.type === 'number') out[k] = n.input.value === '' ? null : Number(n.input.value);
-        else out[k] = n.input.value;
+        else if (n.def.type === 'select') {
+          // Возвращаем исходный тип значения (число/строка), а не строку из DOM
+          const o = (selectOpts[k] || []).find(function (x) { return String(x.v) === n.input.value; });
+          out[k] = o ? o.v : n.input.value;
+        }
+        else out[k] = typeof n.input.value === 'string' && n.def.type !== 'textarea' ? n.input.value.trim() : n.input.value;
       });
       (cfg.fields || []).forEach(function (f) { if (f.type === 'hidden') out[f.k] = f.value; });
       return out;
@@ -447,10 +462,19 @@
       Object.keys(nodes).forEach(function (k) {
         const n = nodes[k];
         if (!n.error) return;
+        const d = n.def;
+        const val = v[k];
+        const empty = val === '' || val === null || val === undefined;
+        const isNum = d.type === 'money' || d.type === 'number';
         let msg = '';
-        if (n.def.required && (v[k] === '' || v[k] === null || v[k] === undefined)) msg = 'Поле обязательно для заполнения';
-        else if (n.def.validate) msg = n.def.validate(v[k], v) || '';
-        else if ((n.def.type === 'money' || n.def.type === 'number') && v[k] !== null && isNaN(v[k])) msg = 'Введите число';
+        if (d.type === 'checkbox') msg = d.required && !val ? 'Необходимо отметить' : '';
+        else if (d.required && (empty || (typeof val === 'string' && !val.trim()))) msg = 'Поле обязательно для заполнения';
+        else if (isNum && !empty && !isFinite(val)) msg = 'Введите число';
+        else if (isNum && !empty && d.min !== undefined && val < d.min) msg = 'Не меньше ' + d.min;
+        else if (isNum && !empty && d.max !== undefined && val > d.max) msg = 'Не больше ' + d.max;
+        else if (d.type === 'money' && !empty && Math.abs(val * 100 - Math.round(val * 100)) > 1e-6) msg = 'Не более 2 знаков после запятой';
+        else if (d.maxLength && !empty && String(val).length > d.maxLength) msg = 'Не более ' + d.maxLength + ' символов';
+        else if (d.validate) msg = d.validate(val, v) || '';
         n.field.classList.toggle('is-invalid', !!msg);
         n.error.textContent = msg;
         n.error.hidden = !msg;
@@ -505,9 +529,15 @@
     });
 
     root.hidden = false;
-    U.$$('[data-close]', root).forEach(function (n) { n.onclick = closeModal; });
+    // Закрытие фоном/крестом/Esc не должно молча терять введённые данные
+    function requestClose() {
+      if (cfg.isDirty && cfg.isDirty() && !window.confirm('Закрыть окно? Введённые данные будут потеряны.')) return;
+      closeModal();
+    }
+    U.$$('[data-close]', root).forEach(function (n) { n.onclick = requestClose; });
 
-    escHandler = function (e) { if (e.key === 'Escape') closeModal(); };
+    if (escHandler) document.removeEventListener('keydown', escHandler);
+    escHandler = function (e) { if (e.key === 'Escape') requestClose(); };
     document.addEventListener('keydown', escHandler);
 
     const focusable = box.querySelector('input, select, textarea, button.btn--primary');
@@ -530,8 +560,10 @@
   /** Модальное окно с формой */
   function formModal(cfg) {
     const f = form({ fields: cfg.fields, values: cfg.values });
+    const initial = JSON.stringify(f.read());
     modal({
       title: cfg.title,
+      isDirty: function () { return JSON.stringify(f.read()) !== initial; },
       size: cfg.size || 'lg',
       body: [cfg.note ? el('div.alert.mb-4', null, [Icons.get('info'), cfg.note]) : null, f.node],
       buttons: [
@@ -543,7 +575,14 @@
               toast({ kind: 'danger', title: 'Проверьте форму', text: 'Не все обязательные поля заполнены' });
               return false;
             }
-            const res = cfg.onSave(f.read(), f);
+            let res;
+            try {
+              res = cfg.onSave(f.read(), f);
+            } catch (e) {
+              if (window.console) console.error(e);
+              toast({ kind: 'danger', title: 'Не удалось сохранить', text: 'Повторите попытку или обратитесь к администратору' });
+              return false;
+            }
             return res === false ? false : true;
           }
         }

@@ -89,22 +89,57 @@
     });
   }
 
+  const MAX_MONEY = 1e9;
+
+  /** Контрольная цифра EAN-13 по первым 12 цифрам */
+  function eanCheckDigit(d12) {
+    let sum = 0;
+    for (let i = 0; i < 12; i++) sum += Number(d12[i]) * (i % 2 ? 3 : 1);
+    return String((10 - sum % 10) % 10);
+  }
+  function newBarcode() {
+    const body = '48' + String(Math.floor(Math.random() * 1e10)).padStart(10, '0');
+    return body + eanCheckDigit(body);
+  }
+  function validEan13(s) { return /^\d{13}$/.test(s) && eanCheckDigit(s.slice(0, 12)) === s[12]; }
+
+  /** Сообщение, если значение поля уже занято другим товаром */
+  function dupError(field, id, label) {
+    return function (v) {
+      if (!v) return '';
+      const dup = App.Store.all('products').some(function (x) { return x.id !== id && String(x[field]) === String(v); });
+      return dup ? label + ' уже используется другим товаром' : '';
+    };
+  }
+
   function editProduct(p) {
+    const pid = p ? p.id : null;
+    const skuDup = dupError('sku', pid, 'Артикул');
+    const barcodeDup = dupError('barcode', pid, 'Штрихкод');
     UI.formModal({
       title: p ? p.name : 'Новый товар',
-      values: p || { unit: 'шт', vat: 12, minStock: 5, active: true, barcode: '48' + Math.floor(Math.random() * 1e11) },
+      values: p || { unit: 'шт', vat: 12, minStock: 5, active: true, barcode: newBarcode() },
       fields: [
-        { k: 'name', t: 'Наименование', required: true, col: 12 },
-        { k: 'sku', t: 'Артикул', required: true, col: 4 },
-        { k: 'barcode', t: 'Штрихкод (EAN-13)', col: 4 },
+        { k: 'name', t: 'Наименование', required: true, col: 12, maxLength: 255 },
+        { k: 'sku', t: 'Артикул', required: true, col: 4, maxLength: 40, validate: skuDup },
+        { k: 'barcode', t: 'Штрихкод (EAN-13)', col: 4,
+          validate: function (v) {
+            if (!v || (p && v === p.barcode)) return '';
+            if (!validEan13(v)) return 'Нужно 13 цифр с верной контрольной цифрой';
+            return barcodeDup(v);
+          } },
         { k: 'categoryId', t: 'Категория', type: 'select', options: H.categoryOptions(), required: true, col: 4 },
         { k: 'unit', t: 'Единица измерения', type: 'select', col: 4, empty: false,
           options: App.Store.all('units').map(function (u) { return { v: u.name, t: u.name }; }) },
-        { k: 'cost', t: 'Себестоимость, сом', type: 'money', required: true, col: 4 },
-        { k: 'price', t: 'Цена продажи, сом', type: 'money', required: true, col: 4,
-          validate: function (v, all) { return v < all.cost ? 'Цена ниже себестоимости' : ''; } },
-        { k: 'vat', t: 'НДС, %', type: 'number', col: 4 },
-        { k: 'minStock', t: 'Минимальный запас', type: 'number', col: 4 },
+        { k: 'cost', t: 'Себестоимость, сом', type: 'money', required: true, col: 4, min: 0, max: MAX_MONEY,
+          validate: function (v) { return v === 0 ? 'Должна быть больше 0' : ''; } },
+        { k: 'price', t: 'Цена продажи, сом', type: 'money', required: true, col: 4, min: 0, max: MAX_MONEY,
+          validate: function (v, all) {
+            if (v === 0) return 'Должна быть больше 0';
+            return v !== null && all.cost !== null && v < all.cost ? 'Цена ниже себестоимости' : '';
+          } },
+        { k: 'vat', t: 'НДС, %', type: 'number', required: true, col: 4, min: 0, max: 100 },
+        { k: 'minStock', t: 'Минимальный запас', type: 'number', required: true, col: 4, min: 0, max: MAX_MONEY },
         { k: 'active', t: 'Активен', type: 'checkbox', col: 4 }
       ],
       onSave: function (v) {
@@ -134,7 +169,7 @@
                 ['Категория', H.categoryName(p.categoryId)], ['Единица', p.unit],
                 ['Себестоимость', U.money(p.cost)], ['Цена продажи', U.money(p.price)],
                 ['Наценка', U.pct(p.cost ? (p.price - p.cost) / p.cost * 100 : 0)],
-                ['НДС', U.pct(p.vat, 0)], ['Минимальный запас', p.minStock + ' ' + p.unit]
+                ['НДС', U.pct(p.vat, 0)], ['Минимальный запас', p.minStock === null || p.minStock === undefined ? '—' : p.minStock + ' ' + p.unit]
               ]),
               UI.card({
                 title: 'Остатки по складам',
