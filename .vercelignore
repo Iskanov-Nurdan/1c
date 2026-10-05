@@ -1,0 +1,13 @@
+.venv
+.git
+**/__pycache__
+**/*.pyc
+app/db.sqlite3*
+app/static/js/tests
+docker
+scripts
+docs
+frontend
+.env
+.env.*
+!.env.example
