@@ -5,7 +5,8 @@ import traceback
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent / 'app'))
-os.environ.setdefault('DJANGO_SETTINGS_MODULE', 'core.settings.vercel')
+# Принудительно: неверное значение из панели Vercel (например, core.settings) не должно ломать запуск
+os.environ['DJANGO_SETTINGS_MODULE'] = 'core.settings.vercel'
 
 try:
     from django.core.wsgi import get_wsgi_application
