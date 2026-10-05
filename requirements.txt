@@ -3,15 +3,11 @@ Django==5.2
 
 # Оформление админки
 django-jazzmin==3.0.5
-pillow==11.2.1
 psycopg2-binary==2.9.10
 python-dotenv==1.1.0
 sqlparse==0.5.3
 tzdata==2025.2
 gunicorn==23.0.0
-
-# Поиск товара по штрихкоду во внешних базах (EAN-Search, ean13.info, barcode-list.ru)
-requests==2.32.3
 
 # REST API для мобильного приложения / сканера
 djangorestframework==3.15.2

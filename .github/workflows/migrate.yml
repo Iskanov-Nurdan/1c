@@ -1,0 +1,50 @@
+# Миграции боевой базы при каждом пуше в main (Vercel деплоит код сам).
+# Порядок: проверка → миграции → начальные данные.
+name: Миграции БД
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: migrate-production
+  cancel-in-progress: false
+
+jobs:
+  migrate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      DJANGO_SETTINGS_MODULE: core.settings.vercel
+      SECRET_KEY: ${{ secrets.SECRET_KEY }}
+      DATABASE_URL: ${{ secrets.DATABASE_URL }}
+      ADMIN_PASSWORD: ${{ secrets.ADMIN_PASSWORD }}
+      ADMIN_LOGIN: ${{ vars.ADMIN_LOGIN || 'admin' }}
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: '3.12'
+          cache: pip
+          cache-dependency-path: requirements.txt
+
+      - name: Проверка секретов
+        run: |
+          test -n "$SECRET_KEY" || { echo "::error::Не задан секрет SECRET_KEY"; exit 1; }
+          test -n "$DATABASE_URL" || { echo "::error::Не задан секрет DATABASE_URL"; exit 1; }
+
+      - run: pip install -r ../requirements.txt
+
+      - name: Проверка проекта
+        run: python manage.py check
+
+      - name: Миграции
+        run: python manage.py migrate --noinput
+
+      - name: Начальные данные (роли, организация, администратор)
+        run: python manage.py bootstrap
