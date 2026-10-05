@@ -1,5 +1,11 @@
 {
-  "framework": null,
-  "rewrites": [{ "source": "/(.*)", "destination": "/api/index" }],
-  "functions": { "api/index.py": { "includeFiles": "app/**" } }
+  "version": 2,
+  "builds": [
+    {
+      "src": "api/index.py",
+      "use": "@vercel/python",
+      "config": { "maxLambdaSize": "250mb", "includeFiles": ["app/**"] }
+    }
+  ],
+  "routes": [{ "src": "/(.*)", "dest": "api/index.py" }]
 }
