@@ -32,9 +32,14 @@ def _database_from_url(url):
 
 
 _database_url = os.getenv('DATABASE_URL', '')
-if not _database_url:
-    raise Exception('DATABASE_URL не задан: на Vercel нужна внешняя база Postgres')
-DATABASES = {'default': _database_from_url(_database_url)}
+if _database_url:
+    DATABASES = {'default': _database_from_url(_database_url)}
+    VERCEL_SQLITE = False
+else:
+    # Без DATABASE_URL — временная SQLite в /tmp (единственная записываемая папка на Vercel).
+    # Данные сбрасываются при холодном старте функции.
+    DATABASES = {'default': {'ENGINE': 'django.db.backends.sqlite3', 'NAME': '/tmp/db.sqlite3'}}
+    VERCEL_SQLITE = True
 
 MIDDLEWARE = list(MIDDLEWARE)
 MIDDLEWARE.insert(1, 'whitenoise.middleware.WhiteNoiseMiddleware')
